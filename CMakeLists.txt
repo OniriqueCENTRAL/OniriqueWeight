@@ -84,6 +84,7 @@ juce_add_binary_data(WeightAssets SOURCES Resources/sigil.png)
 target_sources(OniriqueWeight PRIVATE
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
+    Source/ui/Render3D.cpp
     Source/ui/Theme.cpp)
 
 # The licence every Onirique plugin carries: the folder is copied as it is from

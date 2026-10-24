@@ -10,6 +10,11 @@ son fameux tour du bas. Deux caractères en plus du modèle :
   très large au-dessus, à la manière des bandes d'air des égaliseurs de
   mastering ; les aigus ne passent pas par les lampes et restent propres.
 
+La façade est celle de l'original, peinte d'un rouge sourd ; potards, sélecteurs,
+levier, vis et lampe sont rendus en relief, pixel par pixel, sous une lumière de
+studio fixe : un potard qu'on tourne garde ses reflets en place, comme sur une
+photo de l'appareil.
+
 VST3 (Windows, macOS) et Audio Unit (macOS). Mono ou stéréo (les deux côtés
 liés). Traitement à fréquence doublée : 4 échantillons de latence à 48 kHz,
 annoncés à l'hôte.
@@ -31,13 +36,13 @@ annoncés à l'hôte.
 | | Atten | une étagère douce, jusqu'à -16 dB |
 | | Atten Sel | 5, 10 ou 20 kHz |
 | | EQ (levier) | en bas, les courbes à plat, la couleur des lampes reste |
-| | Power | éteint, le signal tel qu'il est entré ; la lampe rouge l'indique |
+| | Power | éteint, le signal tel qu'il est entré ; la lampe bleue l'indique |
 
 Le tour du bas : Boost et Atten ensemble, à 60 Hz et à 10, donnent environ
 +4,7 dB à 30 Hz et -4,8 dB vers 200 Hz ; à 5 et 3, +3 dB et -1,8 dB.
 
-Survoler ou tourner un réglage affiche sa valeur (et ce qu'elle vaut en dB) dans
-le bandeau ; un double-clic le remet à zéro.
+Survoler ou tourner un réglage affiche sa valeur (et ce qu'elle vaut en dB) juste
+à côté de lui ; un double-clic le remet à zéro.
 
 ---
 

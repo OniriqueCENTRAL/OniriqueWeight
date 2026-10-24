@@ -86,6 +86,17 @@ int selfTest (juce::AudioProcessor& processor, juce::AudioProcessorValueTreeStat
     check (std::abs (bypassed) < 0.1, "power off: as it came in");
     check (finite, "nothing blows up");
 
+    // Turning a knob renders it again at every step: at three times its size
+    // (a large window on a dense screen) that has to keep up with the pointer.
+    const auto start = juce::Time::getMillisecondCounterHiRes();
+
+    for (int i = 0; i < 10; ++i)
+        onirique::render::draw (onirique::render::Part::dial, 360, 0.1f * (float) i);
+
+    const auto each = (juce::Time::getMillisecondCounterHiRes() - start) / 10.0;
+    std::printf ("  a dial at 360 pixels: %.1f ms\n", each);
+    check (each < 30.0, "a dial renders faster than the screen refreshes the knob");
+
     return failures == 0 ? 0 : 1;
 }
 }
@@ -127,6 +138,7 @@ int main (int argc, char** argv)
                 child->setVisible (false);
 
         const auto image = editor->createComponentSnapshot (editor->getLocalBounds(), true, scale);
+
 
         file.deleteFile();
         juce::FileOutputStream stream (file);
