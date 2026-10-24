@@ -197,61 +197,52 @@ struct Turned
     float along, across, radius, theta;
 };
 
-/** The big knob: a tall body fluted all the way up, its top rolled over
-    into a smooth, gently domed face with a ring cut round it, the pointer
-    painted on the rim, and the Onirique star inlaid at its heart. */
+/** The big knob, as on the original: a round, smooth skirt at its foot, the
+    pointer painted on it; above it the grip, nine flutes cut round it as it
+    narrows towards the top; on top a flat face, its edge raised in a lip, a
+    ring cut inside it. */
 struct Dial final : Part
 {
-    explicit Dial (float a) : angle (a) { reach = R + 1.0f; top = height + 0.08f * R; }
+    explicit Dial (float a) : angle (a) { reach = R + 1.0f; top = height + 0.06f * R; }
 
-    static constexpr float R = 50.0f, height = 0.46f * R, face = 0.62f * R;
-
-    /** How far inside the star, in units of R. */
-    static float inStar (float theta, float r)
-    {
-        constexpr float tip = 0.11f, waist = 0.3f * tip;
-        const auto phi = std::fabs (wrap (theta - kPi * 0.5f * std::round (theta / (kPi * 0.5f))));
-        const float ex = waist * 0.7071f - tip, ey = waist * 0.7071f;
-        return tip * ey / (std::cos (phi) * ey - std::sin (phi) * ex) - r;
-    }
+    static constexpr float R = 50.0f, height = 0.5f * R, face = 0.5f * R;
 
     float distance (V p) const override
     {
         const Turned t (p, angle);
-        const auto lobe = std::sqrt (0.5f + 0.5f * std::cos (10.0f * t.theta));
 
-        // The body: its flutes run from the foot to the rolled-over top, and it narrows a little as it rises.
-        constexpr float roll = 0.11f * R;
-        const auto edge = R * (0.9f + 0.1f * lobe) * (1.0f - 0.05f * clamp01 (p.z / height));
-        const auto dx = t.radius - edge + roll, dy = std::fabs (p.z - 0.5f * height) - 0.5f * height + roll;
-        const auto body = std::fmin (std::fmax (dx, dy), 0.0f) + std::sqrt (std::fmax (dx, 0.0f) * std::fmax (dx, 0.0f) + std::fmax (dy, 0.0f) * std::fmax (dy, 0.0f)) - roll;
+        // The skirt: a low flange, round and smooth, sloping up towards the grip.
+        constexpr float round = 0.025f * R;
+        const auto skirt = trapezoid (t.radius, p.z - 0.07f * R, R - round, 0.86f * R - round, 0.07f * R - round) - round;
 
-        // The face: a shallow dome inside the rim, a ring cut round it and another inside.
-        constexpr float rise = 0.05f * R, sphere = face * face / (2.0f * rise) + 0.5f * rise;
-        const auto dome = std::fmax (length (p - V { 0, 0, height + rise - sphere }) - sphere, t.radius - face);
-        auto d = smin (body, dome, 0.01f * R);
-        d = std::fmax (d, -torus (p - V { 0, 0, height }, face + 0.01f * R, 0.018f * R));
-        return std::fmax (d, -torus (p - V { 0, 0, height + rise * 0.6f }, 0.42f * R, 0.01f * R));
+        // The grip: fluted, narrowing from the skirt to the face, its top edge rolled.
+        const auto rise = clamp01 (p.z / height);
+        // Each flute a broad hollow, the ridges between them sharp.
+        const auto hollow = std::sqrt (0.5f + 0.5f * std::cos (9.0f * t.theta + kPi));
+        const auto outline = 0.86f * R + (0.6f * R - 0.86f * R) * rise - 0.08f * R * hollow;
+        const auto side = (t.radius - outline) * 0.85f;
+        const auto grip = std::fmax (-smin (-side, height - p.z, 0.04f * R), -p.z);
+
+        // The face: a disc standing a little proud of the grip, its edge a lip.
+        const auto disc = roundCylinder (p - V { 0, 0, height + 0.01f * R }, face, 0.03f * R, 0.022f * R);
+
+        auto d = smin (smin (skirt, grip, 0.02f * R), disc, 0.006f * R);
+        return std::fmax (d, -torus (p - V { 0, 0, height + 0.04f * R }, 0.4f * R, 0.01f * R));
     }
 
     Material material (V p) const override
     {
         const Turned t (p, angle);
-
-        if (p.z > height && inStar (t.theta, t.radius / R) > 0.0f)
-            return Material::ember;
-
-        if (t.radius > 0.7f * R && t.radius < 0.95f * R && p.z > height - 0.1f * R && std::fabs (t.theta) * t.radius < 0.03f * R)
-            return Material::paint;
-
-        return Material::bakelite;
+        return t.radius > 0.87f * R && t.radius < 0.99f * R && std::fabs (t.theta) * t.radius < 0.026f * R
+                   ? Material::paint : Material::bakelite;
     }
 
     float angle;
 };
 
-/** The bar knob of a frequency switch, on its round boss: its pointing end
-    is cut away in a bevel faced with satin metal, a white line down it. */
+/** The bar knob of a frequency switch, on its round boss: a broad black bar,
+    its pointing end cut away in a bevel that catches the softbox above, a
+    white line down it. */
 struct Selector final : Part
 {
     explicit Selector (float a) : angle (a) { reach = 0.7f * L; top = 0.36f * L; }
@@ -262,7 +253,8 @@ struct Selector final : Part
     {
         const Turned t (p, angle);
         const auto boss = roundCylinder (p - V { 0, 0, 0.06f * L }, 0.3f * L, 0.06f * L, 0.02f * L);
-        const auto bar = std::fmax (roundBox ({ t.across, t.along - 0.12f * L, p.z - 0.21f * L }, { 0.16f * L, 0.5f * L, 0.12f * L }, 0.04f * L), bevel (t, p));
+        const auto bar = -smin (-roundBox ({ t.across, t.along - 0.12f * L, p.z - 0.21f * L }, { 0.17f * L, 0.5f * L, 0.12f * L }, 0.035f * L),
+                                -bevel (t, p), 0.03f * L);
         return smin (boss, bar, 0.02f * L);
     }
 
@@ -278,10 +270,8 @@ struct Selector final : Part
     {
         const Turned t (p, angle);
 
-        if (t.along > 0.19f * L && bevel (t, p) > -0.01f * L)
-            return std::fabs (t.across) < 0.022f * L && t.along < 0.58f * L ? Material::paint : Material::nickel;
-
-        return Material::bakelite;
+        return t.along > 0.22f * L && t.along < 0.58f * L && bevel (t, p) > -0.01f * L && std::fabs (t.across) < 0.022f * L
+                   ? Material::paint : Material::bakelite;
     }
 
     float angle;
@@ -597,12 +587,16 @@ bool intersect (const Scene& scene, V o, V d, Hit& hit, float limit = 1.0e30f, c
 }
 
 //==============================================================================
-// The light: a softbox above and to the left, a strip light along the top, a
-// white card on the right, a studio round them, and the lamp when it is lit.
+// The light, as for the photographs of the original: a large softbox
+// overhead, which glossy faces tilted up mirror as grey; a smaller, brighter
+// one above and to the left for the highlights and the shadows; a strip
+// light along the top, a white card on the right, a studio round them, and
+// the lamp when it is lit.
 struct ConeLight { V direction; float cosMax; V radiance; };
 
 const ConeLight kLights[] = {
-    { norm ({ -0.45f, -0.6f, 0.66f }), std::cos (9.0f * kPi / 180.0f), V { 50.0f, 49.0f, 47.0f } },
+    { norm ({ -0.12f, -0.55f, 0.83f }), std::cos (24.0f * kPi / 180.0f), V { 4.6f, 4.6f, 4.5f } },
+    { norm ({ -0.45f, -0.6f, 0.66f }), std::cos (9.0f * kPi / 180.0f), V { 26.0f, 25.5f, 24.5f } },
     { norm ({ 0.05f, -0.8f, 0.6f }), std::cos (6.0f * kPi / 180.0f), V { 9.0f, 9.0f, 9.2f } },
     { norm ({ 0.62f, -0.25f, 0.74f }), std::cos (24.0f * kPi / 180.0f), V { 1.0f, 1.03f, 1.08f } },
 };
@@ -627,7 +621,7 @@ V studio (V d)
     return { v * 1.02f, v, v * 0.97f };
 }
 
-const V kPanelColour { 0.074f, 0.028f, 0.031f };   // a muted red, as a rack front painted in it
+const V kPanelColour { 0.066f, 0.023f, 0.026f };   // a muted red, as a rack front painted in it
 const V kInkColour { 0.74f, 0.73f, 0.7f };
 
 float inkAt (const Scene& scene, float x, float y)
@@ -654,7 +648,7 @@ Surface surfaceAt (const Scene& scene, Hit& hit)
     {
         case Material::panel:
         {
-            // Satin paint: its colour drifts a little from place to place, and
+            // Matt paint: its colour drifts a little from place to place, and
             // its surface has the faint orange peel of a sprayed coat.
             const auto drift = 1.0f + 0.08f * (fbm (p * 0.02f) - 0.5f);
             constexpr float e = 0.15f;
@@ -664,15 +658,15 @@ Surface surfaceAt (const Scene& scene, Hit& hit)
 
             const auto ink = inkAt (scene, p.x, p.y);
             s.albedo = mix (kPanelColour * drift, kInkColour, ink);
-            s.f0 = grey (0.04f);
-            s.rough = 0.5f + 0.1f * ink;
+            s.f0 = grey (0.03f);
+            s.rough = 0.78f - 0.1f * ink;
             break;
         }
 
         case Material::bakelite:
             s.albedo = { 0.012f, 0.011f, 0.0105f };
             s.f0 = grey (0.045f);
-            s.rough = 0.09f + 0.04f * noise (p * 0.35f);
+            s.rough = 0.07f + 0.03f * noise (p * 0.35f);
             break;
 
         case Material::paint:

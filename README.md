@@ -13,7 +13,7 @@ son fameux tour du bas. Deux caractères en plus du modèle :
 La façade est celle de l'original, peinte d'un rouge sourd, et ce qu'on voit est
 une photographie : la façade et chaque position de chaque pièce sont modélisées en
 3D et rendues par lancer de rayons (`tools/photo.cpp`), bakélite, chrome, nickel,
-verre taillé et peinture satinée sous une boîte à lumière de studio. Le plugin ne
+verre taillé et peinture mate sous une lumière de studio. Le plugin ne
 fait qu'afficher ces images (`Resources/photo`) : un potard qu'on tourne garde ses
 reflets en place, comme sur une photo de l'appareil.
 
