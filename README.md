@@ -10,10 +10,12 @@ son fameux tour du bas. Deux caractères en plus du modèle :
   très large au-dessus, à la manière des bandes d'air des égaliseurs de
   mastering ; les aigus ne passent pas par les lampes et restent propres.
 
-La façade est celle de l'original, peinte d'un rouge sourd ; potards, sélecteurs,
-levier, vis et lampe sont rendus en relief, pixel par pixel, sous une lumière de
-studio fixe : un potard qu'on tourne garde ses reflets en place, comme sur une
-photo de l'appareil.
+La façade est celle de l'original, peinte d'un rouge sourd, et ce qu'on voit est
+une photographie : la façade et chaque position de chaque pièce sont modélisées en
+3D et rendues par lancer de rayons (`tools/photo.cpp`), bakélite, chrome, nickel,
+verre taillé et peinture satinée sous une boîte à lumière de studio. Le plugin ne
+fait qu'afficher ces images (`Resources/photo`) : un potard qu'on tourne garde ses
+reflets en place, comme sur une photo de l'appareil.
 
 VST3 (Windows, macOS) et Audio Unit (macOS). Mono ou stéréo (les deux côtés
 liés). Traitement à fréquence doublée : 4 échantillons de latence à 48 kHz,
@@ -74,6 +76,16 @@ ctest --test-dir build -C Release --output-on-failure
 ```
 
 Le plugin sort dans `build/OniriqueWeight_artefacts/Release/VST3/OniriqueWeight.vst3`.
+
+Les photographies de la façade, après un changement de modèle, de lumière ou de
+disposition (`Source/ui/Layout.h`, partagé avec l'interface) ; une dizaine de
+minutes sur 28 cœurs, `0.1` au lieu de `1.3` pour un aperçu rapide :
+
+```bash
+cmake --build build --config Release --target weight_photo
+build/Release/weight_photo Resources/photo 1.3
+build/Release/weight_photo apercu 0.1 front,dial,lowfreq,highfreq,attensel,eqin,power,preview
+```
 
 Une capture de l'interface, sans hôte :
 

@@ -5,41 +5,6 @@ namespace onirique::theme
 
 using namespace juce;
 
-void WeightLookAndFeel::drawPart (Graphics& g, render::Part part, Rectangle<float> square, float angle)
-{
-    // As many pixels as the screen gives it, whatever the window's zoom.
-    const auto pixels = roundToInt (square.getWidth() * g.getInternalContext().getPhysicalPixelScaleFactor());
-
-    // Whatever was drawn just before may have left its transparency behind.
-    g.setOpacity (1.0f);
-    g.setImageResamplingQuality (Graphics::highResamplingQuality);
-    g.drawImage (cache.get (part, pixels, angle), square);
-}
-
-void WeightLookAndFeel::drawRotarySlider (Graphics& g, int x, int y, int width, int height,
-                                          float position, float startAngle, float endAngle, Slider& slider)
-{
-    const auto kind = slider.getProperties()["kind"].toString();
-    const auto part = kind == "selector" ? render::Part::selector : kind == "bat" ? render::Part::bat : render::Part::dial;
-    const auto size = (float) jmin (width, height);
-
-    drawPart (g, part, Rectangle<float> (size, size).withCentre (Rectangle<int> (x, y, width, height).toFloat().getCentre()),
-              startAngle + position * (endAngle - startAngle));
-}
-
-void WeightLookAndFeel::drawToggleButton (Graphics& g, ToggleButton& button, bool, bool)
-{
-    const auto area = button.getLocalBounds().toFloat();
-    const auto square = Rectangle<float> (jmin (area.getWidth(), area.getHeight()), jmin (area.getWidth(), area.getHeight()))
-                            .withCentre (area.getCentre());
-
-    // The power knob holds the bypass: on is off.
-    if (button.getProperties()["kind"].toString() == "power")
-        drawPart (g, render::Part::power, square, button.getToggleState() ? 0.0f : degreesToRadians (52.0f));
-    else
-        drawPart (g, render::Part::toggle, square, button.getToggleState() ? 0.0f : MathConstants<float>::pi);
-}
-
 //==============================================================================
 namespace
 {

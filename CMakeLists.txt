@@ -78,13 +78,21 @@ juce_add_plugin(OniriqueWeight
     VST3_CATEGORIES Fx EQ
     COPY_PLUGIN_AFTER_BUILD ${WEIGHT_COPY_AFTER_BUILD})
 
-# The Onirique sigil, as it appears in the header of the site.
-juce_add_binary_data(WeightAssets SOURCES Resources/sigil.png)
+# The Onirique sigil, and the photographs the front is made of (tools/photo.cpp).
+juce_add_binary_data(WeightAssets SOURCES
+    Resources/sigil.png
+    Resources/photo/front-off.jpg
+    Resources/photo/front-on.jpg
+    Resources/photo/dial.png
+    Resources/photo/lowfreq.png
+    Resources/photo/highfreq.png
+    Resources/photo/attensel.png
+    Resources/photo/eqin.png
+    Resources/photo/power.png)
 
 target_sources(OniriqueWeight PRIVATE
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
-    Source/ui/Render3D.cpp
     Source/ui/Theme.cpp)
 
 # The licence every Onirique plugin carries: the folder is copied as it is from
@@ -140,3 +148,23 @@ if(MSVC)
 endif()
 
 target_link_libraries(weight_snapshot PRIVATE OniriqueWeight weight_core WeightAssets)
+
+# A development tool, not part of the product: path-traces the photographs of
+# the front and of every position of its controls into Resources/photo. It
+# stands apart from the plugin, whose build needs those photographs.
+juce_add_console_app(weight_photo PRODUCT_NAME "weight_photo")
+set_target_properties(weight_photo PROPERTIES EXCLUDE_FROM_ALL TRUE)
+target_sources(weight_photo PRIVATE tools/photo.cpp)
+
+juce_add_binary_data(WeightPhotoData HEADER_NAME PhotoData.h NAMESPACE PhotoData SOURCES
+    Resources/sigil.png
+    License/Fonts/HankenGrotesk600.ttf)
+set_target_properties(WeightPhotoData PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+target_compile_definitions(weight_photo PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
+
+if(MSVC)
+    target_compile_options(weight_photo PRIVATE /utf-8 /fp:fast)
+endif()
+
+target_link_libraries(weight_photo PRIVATE WeightPhotoData juce::juce_gui_basics juce::juce_recommended_config_flags)

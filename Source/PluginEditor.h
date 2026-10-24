@@ -5,15 +5,17 @@
 
 #include "License/LicenseOverlay.h"
 #include "PluginProcessor.h"
+#include "ui/Layout.h"
 #include "ui/Theme.h"
 
 namespace onirique
 {
 
-/** The front of an old program equalizer, painted red: the same switches in
-    the same places, the low end on the left, the highs on the right, the
-    power and its lamp at the end. The whole front is drawn at one size and
-    scaled as one with the window. */
+/** The front of an old program equalizer, painted red, shown as photographs:
+    the front itself, its lamp lit or not, and each part in the position its
+    parameter is at (tools/photo.cpp renders them). The controls lie unseen
+    over their parts. The whole front is drawn at one size and scaled as one
+    with the window. */
 class WeightEditor final : public AudioProcessorEditor,
                            private Timer
 {
@@ -23,7 +25,7 @@ public:
 
     void resized() override;
 
-    static constexpr int kWidth = 1200, kHeight = 331;
+    static constexpr int kWidth = layout::kWidth, kHeight = layout::kHeight;
 
 private:
     struct Front final : Component
@@ -33,18 +35,17 @@ private:
         void paintOverChildren (Graphics& g) override { onPaintOver (g); }
     };
 
-    /** A control of the front: what it is called in its readout, and where it sits. */
+    /** A control of the front, the component that takes the pointer for it,
+        and the photographs of its part. */
     struct Part
     {
+        const layout::Control* control;
         Component* component;
-        const char* id;
-        const char* name;
-        Point<float> centre;
-        float size;
+        Image photos;
     };
 
     void timerCallback() override;
-    void paintPanel (Graphics&);
+    void paintFront (Graphics&);
     void paintReadout (Graphics&);
 
     WeightProcessor& processor;
@@ -59,13 +60,15 @@ private:
     std::vector<std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment>> sliderAttachments;
     std::vector<std::unique_ptr<AudioProcessorValueTreeState::ButtonAttachment>> buttonAttachments;
 
+    /** The front, lamp off and lit. */
+    Image frontOff, frontOn;
+
+    /** What the parts were last drawn at: a change is drawn again. */
+    std::vector<float> shownValues;
+
     /** What the control in hand, or under the pointer, is set to; shown beside it. */
     const Part* shown = nullptr;
     String readout;
-    bool lampLit = true;
-
-    /** The sigil, white, as printed on the maker's plate; and the grain of the paint. */
-    Image sigil, grain;
 
     TooltipWindow tooltips { this, 2000 };
 
