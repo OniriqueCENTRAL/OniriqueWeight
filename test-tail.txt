@@ -1,0 +1,7 @@
+Test project D:/a/OniriqueWeight/OniriqueWeight/build
+    Start 1: weight
+1/1 Test #1: weight ...........................   Passed    0.04 sec
+
+100% tests passed out of 1
+
+Total Test time (real) =   0.08 sec
