@@ -68,6 +68,46 @@ namespace
 
         return layout;
     }
+
+    //==============================================================================
+    enum Tags { vocal = 1, drums = 2, bass = 4, instruments = 8, mix = 16, mastering = 32 };
+
+    // The tricks this equalizer is known for, as starting points. The switches are given as their position:
+    // lowfreq 20/30/60/100 Hz, highfreq 3/4/5/8/10/12/16 kHz, attensel 5/10/20 kHz.
+    std::vector<PresetBank::Stock> stockPresets()
+    {
+        return {
+            { "Default", 0, {} },
+
+            { "Low End Trick", bass | drums | mix, { { "lowfreq", 2.0f }, { "lowboost", 5.0f }, { "lowatten", 4.0f } } },
+            { "Kick Weight", drums, { { "lowfreq", 2.0f }, { "lowboost", 6.0f }, { "lowatten", 3.0f },
+                                      { "highboost", 2.0f }, { "highfreq", 2.0f }, { "bandwidth", 4.0f } } },
+            { "Snare Crack", drums, { { "lowfreq", 3.0f }, { "lowboost", 2.0f }, { "highboost", 5.0f }, { "highfreq", 2.0f }, { "bandwidth", 3.0f } } },
+            { "Overhead Sheen", drums, { { "lowfreq", 3.0f }, { "lowatten", 3.0f }, { "highboost", 4.0f }, { "highfreq", 5.0f },
+                                         { "bandwidth", 6.0f }, { "highatten", 1.0f }, { "attensel", 2.0f } } },
+
+            { "Sub Bloom", bass, { { "lowfreq", 1.0f }, { "lowboost", 6.0f }, { "lowatten", 2.0f } } },
+            { "Bass Definition", bass, { { "lowfreq", 3.0f }, { "lowboost", 4.0f }, { "lowatten", 3.0f },
+                                         { "highboost", 3.0f }, { "highfreq", 0.0f }, { "bandwidth", 3.0f } } },
+
+            { "Vocal Air", vocal, { { "highboost", 4.0f }, { "highfreq", 5.0f }, { "bandwidth", 8.0f }, { "highatten", 1.0f }, { "attensel", 2.0f } } },
+            { "Vocal Presence", vocal, { { "lowfreq", 3.0f }, { "lowatten", 2.0f }, { "highboost", 3.0f }, { "highfreq", 2.0f }, { "bandwidth", 4.0f } } },
+            { "Warm Vocal", vocal, { { "lowfreq", 3.0f }, { "lowboost", 2.5f }, { "lowatten", 1.5f }, { "highatten", 2.0f }, { "attensel", 1.0f } } },
+
+            { "Acoustic Sparkle", instruments, { { "lowfreq", 3.0f }, { "lowatten", 2.0f }, { "highboost", 4.0f }, { "highfreq", 4.0f }, { "bandwidth", 6.0f } } },
+            { "Guitar Body", instruments, { { "lowfreq", 3.0f }, { "lowboost", 3.0f }, { "highboost", 3.0f }, { "highfreq", 1.0f },
+                                            { "bandwidth", 4.0f }, { "highatten", 2.0f }, { "attensel", 1.0f } } },
+            { "Piano Warmth", instruments, { { "lowfreq", 2.0f }, { "lowboost", 2.5f }, { "highboost", 2.0f }, { "highfreq", 4.0f },
+                                             { "bandwidth", 7.0f }, { "highatten", 1.5f }, { "attensel", 2.0f } } },
+
+            { "Mix Polish", mix | mastering, { { "lowfreq", 1.0f }, { "lowboost", 3.0f }, { "lowatten", 1.5f }, { "highboost", 2.5f },
+                                               { "highfreq", 5.0f }, { "bandwidth", 7.0f }, { "highatten", 1.0f }, { "attensel", 2.0f } } },
+            { "Silk Top", mix | mastering | vocal, { { "highboost", 3.5f }, { "highfreq", 6.0f }, { "bandwidth", 9.0f },
+                                                     { "highatten", 1.5f }, { "attensel", 2.0f } } },
+            { "Dark Tape", mix | instruments, { { "lowfreq", 2.0f }, { "lowboost", 2.0f }, { "highatten", 5.0f }, { "attensel", 0.0f } } },
+            { "Tubes Only", mix | mastering, { { "eqin", 0.0f } } },
+        };
+    }
 }
 
 //==============================================================================
@@ -75,7 +115,8 @@ WeightProcessor::WeightProcessor()
     : AudioProcessor (BusesProperties()
                           .withInput ("Input", AudioChannelSet::stereo(), true)
                           .withOutput ("Output", AudioChannelSet::stereo(), true)),
-      apvts (*this, nullptr, "Weight", createLayout())
+      apvts (*this, nullptr, "Weight", createLayout()),
+      presets (apvts, "Weight", stockPresets(), { "Vocal", "Drums", "Bass", "Instruments", "Mix", "Mastering" })
 {
     auto get = [this] (const char* id) { return apvts.getRawParameterValue (id); };
 
@@ -178,14 +219,21 @@ AudioProcessorEditor* WeightProcessor::createEditor()
 //==============================================================================
 void WeightProcessor::getStateInformation (MemoryBlock& destination)
 {
-    if (const auto xml = apvts.copyState().createXml())
+    auto state = apvts.copyState();
+    presets.writeState (state);
+
+    if (const auto xml = state.createXml())
         copyXmlToBinary (*xml, destination);
 }
 
 void WeightProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     if (const auto xml = getXmlFromBinary (data, sizeInBytes); xml != nullptr && xml->hasTagName (apvts.state.getType()))
-        apvts.replaceState (ValueTree::fromXml (*xml));
+    {
+        auto state = ValueTree::fromXml (*xml);
+        presets.readState (state);
+        apvts.replaceState (state);
+    }
 }
 
 } // namespace onirique

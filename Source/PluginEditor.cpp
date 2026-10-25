@@ -21,6 +21,7 @@ namespace
 WeightEditor::WeightEditor (WeightProcessor& p)
     : AudioProcessorEditor (&p),
       processor (p),
+      bar (p.presets, p.apvts, "WEIGHT", photo ("sigil.png"), kWidth, kWidth),
       frontOff (photo ("front-off.jpg")),
       frontOn (photo ("front-on.jpg"))
 {
@@ -30,6 +31,8 @@ WeightEditor::WeightEditor (WeightProcessor& p)
     front.onPaintOver = [this] (Graphics& g) { paintReadout (g); };
     front.setInterceptsMouseClicks (false, true);
     addAndMakeVisible (front);
+    addAndMakeVisible (bar);
+    jassert (nuit::Bar::heightFor (kWidth) == kBarHeight);
 
     auto& state = processor.apvts;
     Component* components[] = { &lowBoost, &lowAtten, &highBoost, &highAtten, &bandwidth, &lowFreq, &highFreq, &attenSel, &eqIn, &power };
@@ -78,15 +81,15 @@ WeightEditor::WeightEditor (WeightProcessor& p)
     licenseOverlay = std::make_unique<onirique::license::Overlay> ("WEIGHT", processor.license);
     addAndMakeVisible (*licenseOverlay);
 
-    // The front keeps its proportions; the window grows by zooming it.
+    // The front and its bar keep their proportions; the window grows by zooming them, from 75 to 200 %.
     setResizable (true, true);
-    setResizeLimits (900, 900 * kHeight / kWidth, 2100, 2100 * kHeight / kWidth);
-    getConstrainer()->setFixedAspectRatio ((double) kWidth / (double) kHeight);
+    setResizeLimits (kWidth * 3 / 4, kTotalHeight * 3 / 4, kWidth * 2, kTotalHeight * 2);
+    getConstrainer()->setFixedAspectRatio ((double) kWidth / (double) kTotalHeight);
 
     // taille d'ouverture : la règle commune des plugins ONIRIQUE (ui/OniriqueWindowSize.h)
-    const auto opening = onirique::window::openingSize ({}, "ONIRIQUE WEIGHT", { kWidth, kHeight },
-                                                        { 900, 900 * kHeight / kWidth }, { 2100, 2100 * kHeight / kWidth });
-    setSize (opening.x, opening.x * kHeight / kWidth);
+    const auto opening = onirique::window::openingSize ({}, "ONIRIQUE WEIGHT", { kWidth, kTotalHeight },
+                                                        { kWidth * 3 / 4, kTotalHeight * 3 / 4 }, { kWidth * 2, kTotalHeight * 2 });
+    setSize (opening.x, opening.x * kTotalHeight / kWidth);
 
     timerCallback();
     startTimerHz (30);
@@ -102,12 +105,15 @@ void WeightEditor::resized()
 {
     const auto scale = (float) getWidth() / (float) kWidth;
 
-    front.setBounds (0, 0, kWidth, kHeight);
+    front.setBounds (0, kBarHeight, kWidth, kHeight);
     front.setTransform (AffineTransform::scale (scale));
 
-    // The licence badge sits low on the right of the front, clear of the controls.
+    // The licence badge has its place in the bar, beside the menu.
+    bar.setPillWidth (licenseOverlay != nullptr ? licenseOverlay->pillWidth() : 0);
+    bar.place (scale, getLocalBounds());
+
     if (licenseOverlay != nullptr)
-        licenseOverlay->fit (getLocalBounds(), scale, { 870, 297, 240, 28 }, Justification::centredRight);
+        licenseOverlay->fit (getLocalBounds(), scale, bar.getPillArea(), Justification::centredRight);
 }
 
 void WeightEditor::timerCallback()

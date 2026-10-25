@@ -1,7 +1,7 @@
 // Renders the editor to a PNG without a host, so a change to the front can be
 // looked at straight from the build. A development tool, not part of the product.
 //
-//   weight_snapshot out.png [scale]
+//   weight_snapshot out.png [scale] [browser|menu]   with the bar's preset browser or its menu open
 //   weight_snapshot --selftest       the plugin as a host drives it: blocks, twice the rate, bypass
 #include "../Source/PluginEditor.h"
 
@@ -85,6 +85,30 @@ int selfTest (juce::AudioProcessor& processor, juce::AudioProcessorValueTreeStat
     std::printf ("  power off, 30 Hz: %+.2f dB\n", bypassed);
     check (std::abs (bypassed) < 0.1, "power off: as it came in");
     check (finite, "nothing blows up");
+    set ("bypass", 0.0f);
+
+    // The presets: every stock one names only what exists, and loads; A/B and the saved state keep both sides.
+    auto& presets = static_cast<onirique::WeightProcessor&> (processor).presets;
+    const auto problems = presets.checkStock();
+
+    for (const auto& problem : problems)
+        std::printf ("  %s\n", problem.toRawUTF8());
+
+    check (problems.isEmpty(), "the stock presets name real parameters, within their ranges");
+
+    presets.load ("Low End Trick");
+    check (presets.getCurrentName() == "Low End Trick" && std::abs (state.getRawParameterValue ("lowboost")->load() - 5.0f) < 0.01f,
+           "a stock preset loads");
+    presets.switchToSlot (1);
+    presets.load ("Vocal Air");
+    juce::MemoryBlock saved;
+    processor.getStateInformation (saved);
+    presets.switchToSlot (0);
+    check (presets.getCurrentName() == "Low End Trick" && state.getRawParameterValue ("lowboost")->load() > 4.9f, "A comes back as it was left");
+    processor.setStateInformation (saved.getData(), (int) saved.getSize());
+    check (presets.getSlot() == 1 && presets.getCurrentName() == "Vocal Air", "the saved state keeps the side being heard");
+    presets.switchToSlot (0);
+    check (presets.getCurrentName() == "Low End Trick", "and the other side");
 
 
     return failures == 0 ? 0 : 1;
@@ -119,13 +143,25 @@ int main (int argc, char** argv)
 
     {
         std::unique_ptr<juce::AudioProcessorEditor> editor (weight.createEditor());
-        editor->setSize (onirique::WeightEditor::kWidth, onirique::WeightEditor::kHeight);
+        editor->setSize (onirique::WeightEditor::kWidth, onirique::WeightEditor::kTotalHeight);
 
         // This machine may hold no licence for the plugin: the activation page
         // is not what is being looked at.
+        const juce::String panel (argc > 3 ? argv[3] : "");
+
         for (auto* child : editor->getChildren())
+        {
             if (dynamic_cast<onirique::license::Overlay*> (child) != nullptr)
                 child->setVisible (false);
+
+            if (auto* bar = dynamic_cast<onirique::nuit::Bar*> (child))
+            {
+                if (panel == "browser")
+                    bar->openBrowser();
+                else if (panel == "menu")
+                    bar->openMenu();
+            }
+        }
 
         const auto image = editor->createComponentSnapshot (editor->getLocalBounds(), true, scale);
 

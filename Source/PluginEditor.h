@@ -6,6 +6,7 @@
 #include "License/LicenseOverlay.h"
 #include "PluginProcessor.h"
 #include "ui/Layout.h"
+#include "ui/OniriqueBar.h"
 #include "ui/Theme.h"
 
 namespace onirique
@@ -15,7 +16,7 @@ namespace onirique
     the front itself, its lamp lit or not, and each part in the position its
     parameter is at (tools/photo.cpp renders them). The controls lie unseen
     over their parts. The whole front is drawn at one size and scaled as one
-    with the window. */
+    with the window, the bar over it (ui/OniriqueBar.h) with it. */
 class WeightEditor final : public AudioProcessorEditor,
                            private Timer
 {
@@ -26,6 +27,7 @@ public:
     void resized() override;
 
     static constexpr int kWidth = layout::kWidth, kHeight = layout::kHeight;
+    static constexpr int kBarHeight = 50, kTotalHeight = kBarHeight + kHeight;
 
 private:
     struct Front final : Component
@@ -53,6 +55,7 @@ private:
     license::theme::Fonts fonts;
 
     Front front;
+    nuit::Bar bar;
     Slider lowBoost, lowAtten, lowFreq, highBoost, bandwidth, highFreq, highAtten, attenSel;
     ToggleButton eqIn, power;
     std::vector<Part> parts;
