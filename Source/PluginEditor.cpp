@@ -258,12 +258,16 @@ void WeightEditor::retint()
     std::vector<Image*> all { &frontOff, &frontOn };
     for (auto& part : parts) all.push_back (&part.photos);
 
-    if (daOriginals.empty())
-        for (auto* image : all)
-            daOriginals.push_back (*image);
+    // la première fois : les pixels rouges de chaque photo repérés ; ensuite, recolorer est rapide
+    if (daTints.empty())
+        for (size_t i = 0; i < all.size(); ++i)
+        {
+            daTints.emplace_back();
+            daTints.back().prepare (*all[i]);
+        }
 
-    for (size_t i = 0; i < all.size() && i < daOriginals.size(); ++i)
-        *all[i] = da::tintPhoto (daOriginals[i]);
+    for (size_t i = 0; i < all.size() && i < daTints.size(); ++i)
+        *all[i] = daTints[i].render();
 }
 
 void WeightEditor::paintGlow (Graphics& g)
