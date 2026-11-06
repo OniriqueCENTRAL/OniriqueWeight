@@ -141,7 +141,9 @@ void WeightEditor::timerCallback()
 
     // la lueur de la pièce touchée s'allume et s'éteint en douceur
     {
-        const float target = shown != nullptr ? 1.0f : 0.0f;
+        // seulement au survol d'un potard : rien sur les boutons, et rien pendant qu'on le tourne
+        const bool knob = shown != nullptr && dynamic_cast<Slider*> (shown->component) != nullptr;
+        const float target = knob && ! ModifierKeys::currentModifiers.isAnyMouseButtonDown() ? 1.0f : 0.0f;
         if (shown != nullptr) glowPart = shown;
         if (std::abs (glow - target) > 0.01f) { glow += (target - glow) * 0.3f; front.repaint(); }
         else glow = target;
