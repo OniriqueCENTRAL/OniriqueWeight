@@ -21,18 +21,30 @@ namespace
 WeightEditor::WeightEditor (WeightProcessor& p)
     : AudioProcessorEditor (&p),
       processor (p),
-      bar (p.presets, p.apvts, "WEIGHT", photo ("sigil.png"), kWidth, kWidth),
+      bar (p.presets, p.apvts, "WEIGHT", photo ("sigil.png"), kUnits, kUnits),
       frontOff (photo ("front-off.jpg")),
       frontOn (photo ("front-on.jpg"))
 {
     setLookAndFeel (&lookAndFeel);
 
-    front.onPaint = [this] (Graphics& g) { paintFront (g); };
+    front.onPaint = [this] (Graphics& g)
+    {
+        {
+            // la façade aux coins arrondis du verre de VOCALBOX
+            Graphics::ScopedSaveState save (g);
+            Path clip;
+            clip.addRoundedRectangle (0.0f, 0.0f, (float) kWidth, (float) kHeight, 14.0f);
+            g.reduceClipRegion (clip);
+            paintFront (g);
+        }
+        paintGlow (g);
+    };
     front.onPaintOver = [this] (Graphics& g) { paintReadout (g); };
     front.setInterceptsMouseClicks (false, true);
     addAndMakeVisible (front);
     addAndMakeVisible (bar);
-    jassert (nuit::Bar::heightFor (kWidth) == kBarHeight);
+    bar.onThemeChanged = [this] { themeSeen = -1; };
+    jassert (nuit::Bar::heightFor (kUnits) == kBarHeight);
 
     auto& state = processor.apvts;
     Component* components[] = { &lowBoost, &lowAtten, &highBoost, &highAtten, &bandwidth, &lowFreq, &highFreq, &attenSel, &eqIn, &power };
@@ -83,13 +95,13 @@ WeightEditor::WeightEditor (WeightProcessor& p)
 
     // The front and its bar keep their proportions; the window grows by zooming them, from 75 to 200 %.
     setResizable (true, true);
-    setResizeLimits (kWidth * 3 / 4, kTotalHeight * 3 / 4, kWidth * 2, kTotalHeight * 2);
-    getConstrainer()->setFixedAspectRatio ((double) kWidth / (double) kTotalHeight);
+    setResizeLimits (kUnits * 3 / 4, kTotalHeight * 3 / 4, kUnits * 2, kTotalHeight * 2);
+    getConstrainer()->setFixedAspectRatio ((double) kUnits / (double) kTotalHeight);
 
     // taille d'ouverture : la règle commune des plugins ONIRIQUE (ui/OniriqueWindowSize.h)
-    const auto opening = onirique::window::openingSize ({}, "ONIRIQUE WEIGHT", { kWidth, kTotalHeight },
-                                                        { kWidth * 3 / 4, kTotalHeight * 3 / 4 }, { kWidth * 2, kTotalHeight * 2 });
-    setSize (opening.x, opening.x * kTotalHeight / kWidth);
+    const auto opening = onirique::window::openingSize ({}, "ONIRIQUE WEIGHT", { kUnits, kTotalHeight },
+                                                        { kUnits * 3 / 4, kTotalHeight * 3 / 4 }, { kUnits * 2, kTotalHeight * 2 });
+    setSize (opening.x, opening.x * kTotalHeight / kUnits);
 
     timerCallback();
     startTimerHz (30);
@@ -103,9 +115,9 @@ WeightEditor::~WeightEditor()
 
 void WeightEditor::resized()
 {
-    const auto scale = (float) getWidth() / (float) kWidth;
+    const auto scale = (float) getWidth() / (float) kUnits;
 
-    front.setBounds (0, kBarHeight, kWidth, kHeight);
+    front.setBounds (kMargin, kBarHeight + kMargin, kWidth, kHeight);
     front.setTransform (AffineTransform::scale (scale));
 
     // The licence badge has its place in the bar, beside the menu.
@@ -118,6 +130,23 @@ void WeightEditor::resized()
 
 void WeightEditor::timerCallback()
 {
+    // la couleur de l'interface (menu ⋯, ou changée dans un autre plugin ONIRIQUE) : la peinture et le fond suivent
+    if (onirique::look::changedSince (themeSeen))
+    {
+        retint();
+        daBackdrop = {};
+        repaint();
+        front.repaint();
+    }
+
+    // la lueur de la pièce touchée s'allume et s'éteint en douceur
+    {
+        const float target = shown != nullptr ? 1.0f : 0.0f;
+        if (shown != nullptr) glowPart = shown;
+        if (std::abs (glow - target) > 0.01f) { glow += (target - glow) * 0.3f; front.repaint(); }
+        else glow = target;
+    }
+
     // The part in hand first, else the one under the pointer.
     const Part* now = nullptr;
 
@@ -209,16 +238,39 @@ void WeightEditor::paintReadout (Graphics& g)
 
     pill = pill.constrainedWithin (Rectangle<float> ((float) kWidth, (float) kHeight).reduced (4.0f));
 
-    g.setColour (Colours::black.withAlpha (0.4f));
-    g.fillRoundedRectangle (pill.translated (0.0f, 2.0f), pill.getHeight() * 0.5f);
-    g.setColour (Colour (0xe6140c0d));
-    g.fillRoundedRectangle (pill, pill.getHeight() * 0.5f);
-    g.setColour (Colours::white.withAlpha (0.14f));
-    g.drawRoundedRectangle (pill, pill.getHeight() * 0.5f, 1.0f);
+    da::valueBubble (g, pill, readout, font, mist);   // la bulle de valeur de VOCALBOX
+}
 
-    g.setColour (mist);
-    g.setFont (font);
-    g.drawText (readout, pill, Justification::centred, false);
+//==============================================================================
+void WeightEditor::paint (Graphics& g)
+{
+    const float u = (float) getWidth() / (float) kUnits;
+    if (daBackdrop.getWidth() != getWidth() || daBackdrop.getHeight() != getHeight())
+        daBackdrop = da::backdrop (getWidth(), getHeight(), (float) getWidth() / 1100.0f);
+    g.drawImageAt (daBackdrop, 0, 0);
+    da::photoCard (g, Rectangle<float> ((float) kMargin, (float) (kBarHeight + kMargin), (float) kWidth, (float) kHeight) * u, 14.0f * u, u);
+}
+
+void WeightEditor::retint()
+{
+    std::vector<Image*> all { &frontOff, &frontOn };
+    for (auto& part : parts) all.push_back (&part.photos);
+
+    if (daOriginals.empty())
+        for (auto* image : all)
+            daOriginals.push_back (*image);
+
+    for (size_t i = 0; i < all.size() && i < daOriginals.size(); ++i)
+        *all[i] = da::tintPhoto (daOriginals[i]);
+}
+
+void WeightEditor::paintGlow (Graphics& g)
+{
+    if (glowPart == nullptr || glow <= 0.01f)
+        return;
+
+    const auto& c = *glowPart->control;
+    da::partGlow (g, { c.x, c.y }, c.size * 0.5f, glow);
 }
 
 } // namespace onirique
