@@ -12,7 +12,7 @@ son fameux tour du bas. Deux caractères en plus du modèle :
 
 La façade est celle de l'original, peinte d'un rouge sourd, et ce qu'on voit est
 une photographie : la façade et chaque position de chaque pièce sont modélisées en
-3D et rendues par lancer de rayons (`tools/photo.cpp`), bakélite, chrome, nickel,
+3D dans Blender (`tools/blender`) et rendues avec Cycles, bakélite, chrome, nickel,
 verre taillé et peinture mate sous une lumière de studio. Le plugin ne
 fait qu'afficher ces images (`Resources/photo`) : un potard qu'on tourne garde ses
 reflets en place, comme sur une photo de l'appareil.
@@ -78,14 +78,22 @@ ctest --test-dir build -C Release --output-on-failure
 Le plugin sort dans `build/OniriqueWeight_artefacts/Release/VST3/OniriqueWeight.vst3`.
 
 Les photographies de la façade, après un changement de modèle, de lumière ou de
-disposition (`Source/ui/Layout.h`, partagé avec l'interface) ; une dizaine de
-minutes sur 28 cœurs, `0.1` au lieu de `1.3` pour un aperçu rapide :
+disposition (`Source/ui/Layout.h`, partagé avec l'interface : positions, cadrages,
+nombre de positions et angles y sont lus). Le modèle est construit par
+`tools/blender/weight_model.py` (Blender 4.4) ; dans Blender, l'onglet **Weight**
+(touche N) règle chaque potard et lance l'export en arrière-plan. Sans Blender
+ouvert, environ 5 minutes, `0.25` au lieu de `1.0` pour un aperçu rapide :
 
 ```bash
-cmake --build build --config Release --target weight_photo
-build/Release/weight_photo Resources/photo 1.3
-build/Release/weight_photo apercu 0.1 front,dial,lowfreq,highfreq,attensel,eqin,power,preview
+/Applications/Blender.app/Contents/MacOS/Blender -b --factory-startup \
+  --python tools/blender/weight_model.py \
+  --python tools/blender/export_photos.py -- build/photo-blender 1.0
+cp build/photo-blender/{front-on.jpg,front-off.jpg,dial,lowfreq,highfreq,attensel,eqin,power}* Resources/photo/
 ```
+
+`build/photo-blender/preview.png` montre la façade avec chaque réglage posé
+dessus, comme le plugin l'assemble. L'ancien moteur (`tools/photo.cpp`,
+cible `weight_photo`) reste disponible.
 
 Une capture de l'interface, sans hôte :
 
